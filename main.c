@@ -1,5 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
+#include "tga.h" 
 
 int check_missing_parameter(char* parameter, int count_parameter);
 int check_too_many_parameters(char** argv, int i, int count_parameter);
@@ -7,6 +11,9 @@ int check_too_many_parameters(char** argv, int i, int count_parameter);
 int main(int argc, char** argv) {
 
     FILE* real_data_file = NULL;
+
+    int width = 1920;
+    int height = 1080;
 
     int count_real_data_arg = 0;
     int count_infectious_days_arg = 0;
@@ -53,6 +60,26 @@ int main(int argc, char** argv) {
     check_missing_parameter("--infectious_days", count_infectious_days_arg);
     check_missing_parameter("--infectious_per_day", count_infectious_per_day_arg);
     check_missing_parameter("--output", count_output_arg);
+
+    TGAHeader header = { 0, 0, 2, { 0, 0, 0, 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, 24, 32 };
+
+    memcpy(header.width, &width, sizeof(header.width));
+    memcpy(header.height, &height, sizeof(header.height));
+
+    RGBPixel* image = malloc(sizeof(RGBPixel) * width * height);
+
+    for (int x = 0; x < width; x++) {
+        int y = (height/2) + (height/2) * sin(2 * 3.141593 * (x/(double)width));
+        image[y * width + x].R = 255;
+        image[y * width + x].G = 255;
+        image[y * width + x].B = 255;
+    }
+
+    save_tga("image.tga", header, image);
+
+    free(image);
+
+    return 0;
 
     return 0;
 }
