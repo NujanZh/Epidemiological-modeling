@@ -1,0 +1,3 @@
+/home/wayne/code/project/Epidemiological-modeling/cmake-build-debug/CMakeFiles/Epidemiological_modeling.dir
+/home/wayne/code/project/Epidemiological-modeling/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/wayne/code/project/Epidemiological-modeling/cmake-build-debug/CMakeFiles/rebuild_cache.dir
