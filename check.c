@@ -18,9 +18,17 @@ int main()
 
     while(fgets(buffer, sizeof(buffer), file))
     {
-        day++;
         printf("%s", buffer);
-        printf("day: %d\n", day);
     }
+
+    rewind(file);
+
+    while(fgets(buffer, sizeof(buffer), file))
+    {
+        printf("%s", buffer);
+    }
+
+    fclose(file);
+
 
 }
