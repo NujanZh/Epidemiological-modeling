@@ -9,6 +9,8 @@ typedef struct {
 } EpidemicState;
 
 void make_sir_model(EpidemicState *state, double b, double y);
+void real_data_model(FILE* output_file, FILE* real_data_file, int total_number, int* days, int scale, char* color, int s_true, int i_true, int r_true);
+void analyze_data_model(EpidemicState* analyze_state, FILE* output_file, int days, int scale, char* color, double b, double y, int s_true, int i_true, int r_true);
 
 int check_missing_parameter(char* parameter, int count_parameter);
 int check_too_many_parameters(char** argv, int i, int count_parameter);
@@ -117,6 +119,8 @@ int main(int argc, char** argv)
 
     int total_number = susceptible_number_start + infected_number_start + recovered_number_start;
 
+    rewind(real_data_file);
+
     fprintf(output_file, "<!DOCTYPE html>\n");
     fprintf(output_file, "<html lang=\"en\">\n");
     fprintf(output_file, "<head>\n");
@@ -132,186 +136,43 @@ int main(int argc, char** argv)
     fprintf(output_file, "<h2>Real data </h2>\n");
     fprintf(output_file, "\t<svg style=\"transform: scaleY(-1)\" width=\"600\" height=\"500\" viewBox=\"0 0 600 500\" xmlns=\"http://www.w3.org/2000/svg\">\n");
 
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"#0000FF\"\n");
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    int num = 0;
-
-    while(fgets(buffer, sizeof(buffer), real_data_file))
-    {
-        double i;
-
-        if (days == 0)
-        {
-            i = (double) susceptible_number_start / total_number;
-            i = i * 500;
-            fprintf(output_file, "\t\t\t%d, %f\n", num, i);
-
-            num = num + 20;
-            days++;
-        }
-
-        data = strtok(buffer, ",");
-        int susceptible_number = atoi(data);
-        i = (double) susceptible_number / total_number;
-        i = i * 500;
-
-        data = strtok(NULL, ",");
-        int infected_number = atoi(data);
-
-        data = strtok(NULL, ",");
-        int recovered_number = atoi(data);
-
-        fprintf(output_file, "\t\t\t%d, %f\n", num, i);
-
-        num = num + 20;
-        days++;
-    }
-
-    fprintf(output_file, "\t\t\t\"\n");
-
-    fprintf(output_file, "\t\t/>\n");
-
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"#FF0000\"\n");
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    // Need this to read a real_data_file from the beginning
+    real_data_model(output_file, real_data_file, total_number, &days, 500, "#0000FF", 1, 0, 0);
     rewind(real_data_file);
 
-    num = 0;
-    while(fgets(buffer, sizeof(buffer), real_data_file))
-    {
-        double i;
-
-        data = strtok(buffer, ",");
-        int susceptible_number = atoi(data);
-
-        data = strtok(NULL, ",");
-        int infected_number = atoi(data);
-        i = (double) infected_number / total_number;
-        i = i * 500;
-
-        data = strtok(NULL, ",");
-        int recovered_number = atoi(data);
-
-        fprintf(output_file, "\t\t\t%d, %f\n", num, i);
-
-        num = num + 20;
-    }
-
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
-
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"#00FF00\"\n");
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    // Need this to read a real_data_file from the beginning
+    real_data_model(output_file, real_data_file, total_number, &days, 500, "#FF0000", 0, 1, 0);
     rewind(real_data_file);
 
-    num = 0;
-    while(fgets(buffer, sizeof(buffer), real_data_file))
-    {
-        double i;
-
-        data = strtok(buffer, ",");
-        int susceptible_number = atoi(data);
-
-        data = strtok(NULL, ",");
-        int infected_number = atoi(data);
-
-        data = strtok(NULL, ",");
-        int recovered_number = atoi(data);
-        i = (double) recovered_number / total_number;
-        i = i * 500;
-
-        fprintf(output_file, "\t\t\t%d, %f\n", num, i);
-
-        num = num + 20;
-    }
-
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
-
+    real_data_model(output_file, real_data_file, total_number, &days, 500, "#00FF00", 0, 0, 1);
+    rewind(real_data_file);
 
     fprintf(output_file, "\t</svg>\n");
     fprintf(output_file, "</div>\n");
 
-    EpidemicState analyze_state;
-    analyze_state.S = (double) susceptible_number_start / total_number;
-    analyze_state.I = (double) infected_number_start / total_number;
-    analyze_state.R = (double) recovered_number_start / total_number;
 
     fprintf(output_file, "<div style=\"display: inline-block\">\n");
     fprintf(output_file, "<h2>Simulated data </h2>\n");
     fprintf(output_file, "\t<svg style=\"transform: scaleY(-1)\" width=\"600\" height=\"500\" viewBox=\"0 0 600 500\" xmlns=\"http://www.w3.org/2000/svg\">\n");
 
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"#0000FF\"\n");
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    num = 0;
-    for (int i = 0; i < days; ++i) {
-        double result = analyze_state.S  * 500;
-        fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-        make_sir_model(&analyze_state, b, y);
-        num = num + 20;
-    }
-
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
+    EpidemicState analyze_state;
 
     analyze_state.S = (double) susceptible_number_start / total_number;
     analyze_state.I = (double) infected_number_start / total_number;
     analyze_state.R = (double) recovered_number_start / total_number;
 
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"#FF0000\"\n");
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    num = 0;
-    for (int i = 0; i < days; ++i) {
-        double result = analyze_state.I  * 500;
-        fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-        make_sir_model(&analyze_state, b, y);
-        num = num + 20;
-    }
-
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
+    analyze_data_model(&analyze_state, output_file, days, 500, "#0000FF", b, y, 1, 0, 0);
 
     analyze_state.S = (double) susceptible_number_start / total_number;
     analyze_state.I = (double) infected_number_start / total_number;
     analyze_state.R = (double) recovered_number_start / total_number;
 
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"#00FF00\"\n");
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
+    analyze_data_model(&analyze_state, output_file, days, 500, "#FF0000", b, y, 0, 1, 0);
 
-    num = 0;
-    for (int i = 0; i < days; ++i) {
-        double result = analyze_state.R  * 500;
-        fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-        make_sir_model(&analyze_state, b, y);
-        num = num + 20;
-    }
+    analyze_state.S = (double) susceptible_number_start / total_number;
+    analyze_state.I = (double) infected_number_start / total_number;
+    analyze_state.R = (double) recovered_number_start / total_number;
 
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
+    analyze_data_model(&analyze_state, output_file, days, 500, "#00FF00", b, y, 0, 0, 1);
+
     fprintf(output_file, "\t</svg>\n");
     fprintf(output_file, "</div>\n");
     fprintf(output_file, "</div>\n");
@@ -354,4 +215,93 @@ int check_too_many_parameters(char** argv, int i, int count_parameter)
     }
 
     return 0;
+}
+
+void real_data_model(FILE* output_file, FILE* real_data_file, int total_number, int* days, int scale, char* color, int s_true, int i_true, int r_true)
+{
+    char buffer[1000];
+    char *data;
+
+    fprintf(output_file, "\t\t<polyline\n");
+    fprintf(output_file, "\t\t\tfill=\"none\"\n");
+    fprintf(output_file, "\t\t\tstroke=\"%s\"\n", color);
+    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
+    fprintf(output_file, "\t\t\tpoints=\"\n");
+
+    int num = 0;
+    int day = 0;
+
+    while(fgets(buffer, sizeof(buffer), real_data_file))
+    {
+        double result;
+
+        data = strtok(buffer, ",");
+        for (int i = 0; i < 3; ++i)
+        {
+            if (i == 0 && s_true == 1)
+            {
+                int susceptible_number = atoi(data);
+                result = (double) susceptible_number / total_number;
+                result = result * scale;
+            }
+            else if (i == 1 && i_true == 1)
+            {
+                int infected_number = atoi(data);
+                result = (double) infected_number / total_number;
+                result = result * scale;
+            }
+            else if (i == 2 && r_true == 1)
+            {
+                int recovered_number = atoi(data);
+                result = (double) recovered_number / total_number;
+                result = result * scale;
+            }
+            data = strtok(NULL, ",");
+        }
+
+        fprintf(output_file, "\t\t\t%d, %f\n", num, result);
+
+        num = num + 20;
+        day++;
+    }
+
+    *days = day;
+
+    fprintf(output_file, "\t\t\t\"\n");
+    fprintf(output_file, "\t\t/>\n");
+}
+
+void analyze_data_model(EpidemicState* analyze_state, FILE* output_file, int days, int scale, char* color, double b, double y, int s_true, int i_true, int r_true)
+{
+    fprintf(output_file, "\t\t<polyline\n");
+    fprintf(output_file, "\t\t\tfill=\"none\"\n");
+    fprintf(output_file, "\t\t\tstroke=\"%s\"\n", color);
+    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
+    fprintf(output_file, "\t\t\tpoints=\"\n");
+
+    int num = 0;
+    for (int i = 0; i < days; ++i) {
+        if (s_true == 1)
+        {
+            double result = analyze_state->S  * scale;
+            fprintf(output_file, "\t\t\t%d, %f\n", num, result);
+            make_sir_model(analyze_state, b, y);
+        }
+        if (i_true == 1)
+        {
+            double result = analyze_state->I  * scale;
+            fprintf(output_file, "\t\t\t%d, %f\n", num, result);
+            make_sir_model(analyze_state, b, y);
+        }
+        if (r_true == 1)
+        {
+            double result = analyze_state->R  * scale;
+            fprintf(output_file, "\t\t\t%d, %f\n", num, result);
+            make_sir_model(analyze_state, b, y);
+        }
+        num = num + 20;
+    }
+
+    fprintf(output_file, "\t\t\t\"\n");
+    fprintf(output_file, "\t\t/>\n");
 }
