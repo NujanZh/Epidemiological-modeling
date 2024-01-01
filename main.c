@@ -1,30 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct {
-    double S;
-    double I;
-    double R;
-} EpidemicState;
-
-void make_sir_model(EpidemicState *state, double b, double y);
-void real_data_model(FILE* output_file, FILE* real_data_file, int total_number, int* days, int scale, char* color, int s_true, int i_true, int r_true);
-void analyze_data_model(EpidemicState* analyze_state, FILE* output_file, int days, int scale, char* color, double b, double y, int s_true, int i_true, int r_true);
-
-int check_missing_parameter(char* parameter, int count_parameter);
-int check_too_many_parameters(char** argv, int i, int count_parameter);
+#include "sirmodel.h"
+#include "checkparameter.h"
 
 int main(int argc, char** argv) 
 {
-
     char buffer[1000];
     char *data;
+
+    // this parameter will count a days from real data file in function real_data_model then I will use for loop in function analyze data model
     int days = 0;
 
     FILE* real_data_file = NULL;
     FILE* output_file = NULL;
 
+    // this parameters will count how many times user write a parameters, if it will be more than 1 code will throw error
     int count_real_data_arg = 0;
     int count_output_arg = 0;
     int count_infectious_days = 0;
@@ -40,6 +31,7 @@ int main(int argc, char** argv)
             i++;
             count_real_data_arg++;
 
+            // check how many times this parameter was called
             if (check_too_many_parameters(argv, i, count_real_data_arg)) return 1;
             if (i >= argc || argv[i][0] == '-')
             {
@@ -48,6 +40,12 @@ int main(int argc, char** argv)
             }
 
             real_data_file = fopen(argv[i], "rb");
+
+            if (real_data_file == NULL)
+            {
+                printf("Please check if you write real data file\'s name or path correct.\nBecause the file you wrote doesn't exist.\n");
+                return 1;
+            }
 
         } else if (strcmp(argv[i], "--infectious_days") == 0)
         {
@@ -97,6 +95,7 @@ int main(int argc, char** argv)
         }
     }
 
+    // check if all parameters have been written
     check_missing_parameter("--real-data", count_real_data_arg);
     check_missing_parameter("--infectious_days", count_infectious_days);
     check_missing_parameter("--infections_per_day", count_infections_per_day);
@@ -105,7 +104,7 @@ int main(int argc, char** argv)
     double b = infections_per_day;
     double y = 1.0 / (double)infectious_days;
 
-
+    // call function fgets to save a starting numbers from real data file
     fgets(buffer, sizeof(buffer), real_data_file);
 
     data = strtok(buffer, ",");
@@ -119,6 +118,7 @@ int main(int argc, char** argv)
 
     int total_number = susceptible_number_start + infected_number_start + recovered_number_start;
 
+    // using rewind to read a real data file from the beginning
     rewind(real_data_file);
 
     fprintf(output_file, "<!DOCTYPE html>\n");
@@ -137,6 +137,7 @@ int main(int argc, char** argv)
     fprintf(output_file, "\t<svg style=\"transform: scaleY(-1)\" width=\"600\" height=\"500\" viewBox=\"0 0 600 500\" xmlns=\"http://www.w3.org/2000/svg\">\n");
 
     real_data_model(output_file, real_data_file, total_number, &days, 500, "#0000FF", 1, 0, 0);
+    // Using rewind because real_data_model function draw polyline for each SIR argument separately
     rewind(real_data_file);
 
     real_data_model(output_file, real_data_file, total_number, &days, 500, "#FF0000", 0, 1, 0);
@@ -161,6 +162,7 @@ int main(int argc, char** argv)
 
     analyze_data_model(&analyze_state, output_file, days, 500, "#0000FF", b, y, 1, 0, 0);
 
+    // I wrote the original data again because I call the analyze_data_model function for each argument separately. This is done this way because I have to draw a polyline for each argument.
     analyze_state.S = (double) susceptible_number_start / total_number;
     analyze_state.I = (double) infected_number_start / total_number;
     analyze_state.R = (double) recovered_number_start / total_number;
@@ -186,122 +188,4 @@ int main(int argc, char** argv)
     fclose(output_file);
 
     return 0;
-}
-
-void make_sir_model(EpidemicState *state, double b, double y)
-{
-    double new_s = state->S - b * state->S * state->I;
-    double new_i = state->I + b * state->S * state->I - y * state->I;
-    double new_r = state->R + y * state->I;
-
-    state->S = new_s;
-    state->I = new_i;
-    state->R = new_r;
-}
-
-int check_missing_parameter(char* parameter, int count_parameter)
-{
-    if (count_parameter < 1) {
-        printf("Parameter %s didn't provided\n", parameter);
-        return 1;
-    }
-}
-
-int check_too_many_parameters(char** argv, int i, int count_parameter)
-{
-    if (count_parameter > 1) {
-        printf("Parameter %s provided multiple times\n", argv[i - 1]);
-        return 1;
-    }
-
-    return 0;
-}
-
-void real_data_model(FILE* output_file, FILE* real_data_file, int total_number, int* days, int scale, char* color, int s_true, int i_true, int r_true)
-{
-    char buffer[1000];
-    char *data;
-
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"%s\"\n", color);
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    int num = 0;
-    int day = 0;
-
-    while(fgets(buffer, sizeof(buffer), real_data_file))
-    {
-        double result;
-
-        data = strtok(buffer, ",");
-        for (int i = 0; i < 3; ++i)
-        {
-            if (i == 0 && s_true == 1)
-            {
-                int susceptible_number = atoi(data);
-                result = (double) susceptible_number / total_number;
-                result = result * scale;
-            }
-            else if (i == 1 && i_true == 1)
-            {
-                int infected_number = atoi(data);
-                result = (double) infected_number / total_number;
-                result = result * scale;
-            }
-            else if (i == 2 && r_true == 1)
-            {
-                int recovered_number = atoi(data);
-                result = (double) recovered_number / total_number;
-                result = result * scale;
-            }
-            data = strtok(NULL, ",");
-        }
-
-        fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-
-        num = num + 20;
-        day++;
-    }
-
-    *days = day;
-
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
-}
-
-void analyze_data_model(EpidemicState* analyze_state, FILE* output_file, int days, int scale, char* color, double b, double y, int s_true, int i_true, int r_true)
-{
-    fprintf(output_file, "\t\t<polyline\n");
-    fprintf(output_file, "\t\t\tfill=\"none\"\n");
-    fprintf(output_file, "\t\t\tstroke=\"%s\"\n", color);
-    fprintf(output_file, "\t\t\tstroke-width=\"2\"\n");
-    fprintf(output_file, "\t\t\tpoints=\"\n");
-
-    int num = 0;
-    for (int i = 0; i < days; ++i) {
-        if (s_true == 1)
-        {
-            double result = analyze_state->S  * scale;
-            fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-            make_sir_model(analyze_state, b, y);
-        }
-        if (i_true == 1)
-        {
-            double result = analyze_state->I  * scale;
-            fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-            make_sir_model(analyze_state, b, y);
-        }
-        if (r_true == 1)
-        {
-            double result = analyze_state->R  * scale;
-            fprintf(output_file, "\t\t\t%d, %f\n", num, result);
-            make_sir_model(analyze_state, b, y);
-        }
-        num = num + 20;
-    }
-
-    fprintf(output_file, "\t\t\t\"\n");
-    fprintf(output_file, "\t\t/>\n");
 }

@@ -1,0 +1,1 @@
+/usr/bin/cc  -fsanitize=address CMakeFiles/Epidemiological_modeling.dir/main.c.o CMakeFiles/Epidemiological_modeling.dir/sirmodel.c.o CMakeFiles/Epidemiological_modeling.dir/checkparameter.c.o -o Epidemiological_modeling 
